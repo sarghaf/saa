@@ -1,0 +1,499 @@
+<!doctype html>
+<html>
+	<head>
+	<meta charset="UTF-8">
+	<link rel="stylesheet" href="lib/Leaflet.css" />
+	<link rel="stylesheet" href="lib/Leaflet.Label.css" />
+	<script src="lib/Leaflet.js"></script>
+	<script src="lib/Leaflet.Label.js"></script>
+	<script src="data/mapid.geojson"></script>
+	<style text="text/css">
+	@font-face {
+    font-family: Yekan;
+    url('Yekan.woff') format('woff'),
+    
+    font-weight: normal;
+    font-style: normal;
+}
+	@font-face {
+  font-family: Shabnam;
+  src: url('Shabnam.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+	#maindiv{
+	direction: rtl;
+    position: absolute;
+    z-index: 1000;
+	top:32px;
+	right:3px;
+	background-color:white;
+	margin-top:2%;
+	margin-right:0%;
+	border-radius:10px;
+	border:3px solid gray;
+	padding:1%;
+	float:right;
+        }	
+	select{
+	padding:7px;
+	color:white;
+	border-radius:8px;
+	font-family: b Yekan;
+	background-color:#bb1919;
+	font-size:14px;
+	margin:2px;
+	}
+	option{
+	font-family: b Yekan;
+	
+	
+	}
+	label{
+	font-size:14px;
+	font-family: Shabnam;
+	margin-top:3px;
+	font-weight: bold;
+		}
+	button{
+	color:white;
+	font-family: b Yekan;
+	background-color:#bb1919;
+	border-radius:10px;
+	padding:10px;
+	margin-right:41px;
+	margin-top:5px;
+	}	
+	
+	#map1{
+	position:absolute;
+	top:0;
+	height: 595px;
+	width: 99%;
+	z-index: 1000px;
+
+	}
+	#ms{
+	margin-right:18px;
+	}
+	#ys{
+	margin-right:9px;
+	}
+	#goback {
+	direction: rtl;
+    position: absolute;
+	top:3px;
+	right:3px;
+	float:right;
+	font-family: Shabnam;
+	font-weight: bold;
+	color:white;
+	background-color:#bb1919;
+	border-radius:8px;
+	padding:10px;
+	margin-bottom:5px;
+	margin-right:5px;
+	margin-top:5px;
+	z-index: 1000;
+	}	
+	a{
+	color:white;
+	text-decoration:none;
+	}
+	#name{
+	font-family: Shabnam;
+	font-size: 10px;
+	}
+	#num{
+	font-family: b Yekan;
+	font-size: 12px;
+	}
+	#title{
+	
+	margin: auto;
+	top:3px;
+	right:42%;
+	font-family: Shabnam;
+	color:#bb1919; 
+	font-size: 18px; 
+	font-weight: bold;
+	padding:5px;
+	z-index:1000;
+	direction: rtl;
+    position: fixed;
+    text-align:center;
+	}
+	.legend {
+    line-height: 18px;
+    color: #555;
+	background-color: white;
+	padding: 10px;
+	border-radius: 3px;
+	font-family: b Yekan;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.8;
+	
+}
+	</style>
+	</head>
+	
+	<body>
+<title> ایدمان - تحلیل مکانی </title>
+
+<div id="map1"></div>  
+<button id="goback"><a href="https://idman.ir/">بازگشت به سایت ایدمان</a></button>
+<div id="maindiv">
+<div id="ydiv"><label id="yl" for="ys"> سال:</label>
+<select id="ys" name="ys" ></select>
+<div id="mdiv"><label id="ml" for="ms"> ماه:</label>
+<select id="ms" name="ms"></select>
+<div id="ddiv"><label id="dl" for="ds"> بحران:</label>
+<select id="ds" name="ds" ></select><br/>
+<button type="submit" id="subutton"  onclick = "mapfun()">اجرا</button>
+</div> </div></div></div>
+<p id = "title"></p>   
+
+
+	<script type="text/javascript">
+	
+	
+	var map = L.map("map1");
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+		}).addTo(map);
+		map.setView([33,52], 5);
+	
+ 
+let dropdowny = document.getElementById('ys');
+	dropdowny.length = 0;
+let dropdownm = document.getElementById('ms');
+	dropdownm.length = 0;
+let dropdownd = document.getElementById('ds');
+	dropdownd.length = 0;
+
+let defaultOptiony = document.createElement('option');
+	defaultOptiony.text = 'انتخاب سال';
+	defaultOptiony.value = '';
+let defaultOptionm = document.createElement('option');
+	defaultOptionm.text = 'انتخاب ماه';
+	defaultOptionm.value = '';
+let defaultOptiond = document.createElement('option');
+	defaultOptiond.text = 'انتخاب بحران';
+	defaultOptiond.value = '';
+
+dropdowny.add(defaultOptiony);
+dropdowny.selectedIndex = 0;
+dropdownm.add(defaultOptionm);
+dropdownm.selectedIndex = 0;
+dropdownd.add(defaultOptiond);
+dropdownd.selectedIndex = 0;
+
+
+const url = 'https://idman.ir/ws-analysis/get_statistical_information.php';
+
+fetch(url)  
+  .then(  
+    function(response) {  
+      if (response.status !== 200) {  
+        console.warn('Looks like there was a problem. Status Code: ' + 
+          response.status);  
+        return;  
+      }
+
+
+      response.json().then(function(data) {  
+        let optiony;
+    
+    	for (let i = 0; i < data.year_list.length; i++) {
+          optiony = document.createElement('option');
+      	  optiony.text = data.year_list[i];
+      	  optiony.value = data.year_list[i];
+      	  dropdowny.add(optiony);
+    	} 
+	    let optionm;
+    
+    	for (let i = 0; i < data.month_list.length; i++) {
+          optionm = document.createElement('option');
+      	  optionm.text = data.month_list[i];
+      	  optionm.value = data.month_list[i];
+      	  dropdownm.add(optionm);
+		  
+		switch (optionm.text){
+    case "1":
+     optionm.text = "فروردین";
+    break;
+    case "2":
+    optionm.text = "اردیبهشت";
+    break;
+    case "3": 
+    optionm.text = "خرداد";
+    break;
+	case "4": 
+    optionm.text = "تیر";
+    break;
+	case "5": 
+    optionm.text = "مرداد";
+    break;
+	case "6": 
+    optionm.text = "شهریور";
+    break;
+	case "7": 
+    optionm.text = "مهر";
+    break;
+	case "8": 
+    optionm.text = "آبان";
+    break;
+	case "9": 
+    optionm.text = "آذر";
+    break;
+	case "10": 
+    optionm.text = "دی";
+    break;
+	case "11": 
+    optionm.text = "بهمن";
+    break;
+	case "12": 
+    optionm.text = "اسفند";
+    break;
+	
+	}
+      }
+	    let optiond;
+    
+    	for (let i = 0; i < data.disaster_list.length; i++) {
+          optiond = document.createElement('option');
+      	  optiond.text = data.disaster_list[i];
+      	  optiond.value = data.disaster_list[i];
+      	  dropdownd.add(optiond);	  
+	  }
+	  
+	  });  
+    }  
+  )  
+  .catch(function(err) {  
+    console.error('Fetch Error -', err);  
+  });
+  
+		var up = document.getElementById('GFG_DOWN1');
+   function mapfun() {
+
+   map.eachLayer(function(layer) {
+  if (!!layer.toGeoJSON) {
+    map.removeLayer(layer);
+  }
+});
+		var sely = document.getElementById('ys');
+		var selm = document.getElementById('ms');
+		var seld = document.getElementById('ds');
+		var opty = sely.options[sely.selectedIndex];
+		var optm = selm.options[selm.selectedIndex];
+		var optd = seld.options[seld.selectedIndex];
+		console.log(opty.value);
+		console.log(optm.value);
+		console.log(optd.value);
+	
+	var monthss = optm.value;
+	switch (monthss){
+	
+    case "1":
+     var monthss = "فروردین";
+    break;
+    case "2":
+    var monthss = "اردیبهشت";
+    break;
+    case "3": 
+    var monthss = "خرداد";
+    break;
+	case "4": 
+    var monthss = "تیر";
+    break;
+	case "5": 
+    var monthss = "مرداد";
+    break;
+	case "6": 
+    var monthss = "شهریور";
+    break;
+	case "7": 
+    var monthss = "مهر";
+    break;
+	case "8": 
+    var monthss = "آبان";
+    break;
+	case "9": 
+    var monthss = "آذر";
+    break;
+	case "10": 
+    var monthss = "دی";
+    break;
+	case "11": 
+    var monthss = "بهمن";
+    break;
+	case "12": 
+    var monthss = "اسفند";
+    break;
+	
+	}
+	
+   	if(opty.value== "" && optm.value== ""&& optd.value== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				//url1.searchParams.append('year', opty.value);
+                //down.innerHTML = url1;
+		up = "توزیع مکانی تعداد کل خبرها";
+}
+	else if(opty.value!== "" && optm.value== ""&& optd.value== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('year', opty.value);
+		up = " توزیع مکانی "+" تعداد خبرها در سال "+ opty.value;
+	}
+	else if(opty.value== "" && optm.value!== ""&& optd.value== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('month', optm.value);
+		up = " توزیع مکانی "+" تعداد خبرها در ماه "+ monthss;		
+}
+	else if(opty.value== "" && optm.value== ""&& optd.value!== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('disaster', optd.value);
+		up = " توزیع مکانی "+" تعداد خبرها در بحران "+ optd.value;			
+}
+	else if(opty.value!== "" && optm.value!== ""&& optd.value== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('year', opty.value);
+				url1.searchParams.append('month', optm.value);
+		up = " توزیع مکانی "+" تعداد خبرها در سال "+ opty.value + " و ماه "+monthss;	
+}
+	else if(opty.value== "" && optm.value!== ""&& optd.value!== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('month', optm.value);
+				url1.searchParams.append('disaster', optd.value);
+		up = " توزیع مکانی "+" تعداد خبرها در ماه "+ monthss+ " و بحران "+optd.value;;			
+}
+	else if(opty.value!== "" && optm.value== ""&& optd.value!== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('year', opty.value);
+				url1.searchParams.append('disaster', optd.value);
+		up = " توزیع مکانی "+" تعداد خبرها در سال "+ opty.value + " و بحران "+optd.value;			
+}
+	else if(opty.value!== "" && optm.value!== ""&& optd.value!== ""){
+	var url1 = new URL("https://idman.ir/ws-analysis/get_spatial_time.php?");
+				url1.searchParams.append('year', opty.value);
+				url1.searchParams.append('month', optm.value);
+				url1.searchParams.append('disaster', optd.value);
+		up = " توزیع مکانی "+" تعداد خبرها در سال "+ opty.value + " و ماه "+monthss+ " و بحران "+optd.value;			
+}
+
+		fetch(url1)
+		.then(response => {
+		 return response.json();
+		 })
+		.then(data =>{
+		console.log(data);	
+
+
+   provinces.features.sort(function (a, b) {
+    return a.properties.Pid - b.properties.Pid;
+});
+
+var p = provinces;
+
+var title = document.getElementById('title');
+title.innerHTML = up;
+
+		for (let index = 0; index < Object.keys(data.data).length; index++) {
+			if (Object.values(data.data)[index].pid == provinces.features[index].properties.Pid){
+				p.features[index].properties.number = Object.values(data.data)[index].number; 	
+		}}
+		
+	var  provinceslayer = L.geoJson(
+			p,{
+			style : mystyle,
+			onEachFeature : provincesonEachFeature 
+	}).addTo(map)
+
+
+
+
+   });}
+  
+
+
+	function getcolor(num){
+		if ( num > 3000){return "black"}
+		else if (num > 2500){return "brown"}
+		else if (num > 2000){return "darkred"}
+		else if (num > 1500){return "red"}
+		else if (num > 1000){return "orange"}
+		else if (num > 750){return "yellow"}
+		else if (num > 500){return "pink"}
+		else if (num > 250){return "purple"}
+		else if (num > 100){return "darkblue"}
+		else if (num > 75){return "blue"}
+		else if (num > 50){return "green"}
+		else if (num > 25){return "lightgreen"}	
+		else {return "lightblue"}
+	}
+	
+	function mystyle(feature){
+		return{
+		fillColor:getcolor(feature.properties.number),
+		color:"black",
+		fillOpacity:0.8,
+		weight:1
+		}
+	
+	}
+	
+	function provincesonEachFeature(feature, layer){
+		layer.bindLabel('<p id="name">'+feature.properties.ostn_name.toString(),{sticky: true})
+		layer.bindPopup('<p id="num">'+' تعداد خبر : '+feature.properties.number.toString()+'</p>')
+			layer.on(
+			{
+			mouseover : highlightFeature,
+			mouseout : resetHighlight,
+			//click: zoomToFeature
+			});}
+		
+	function highlightFeature(e){
+		var layer = e.target;
+		layer.setStyle({
+		weight : 5,
+		fillOpacity:1
+		})}
+
+	function resetHighlight(e){
+		var layer = e.target;
+		layer.setStyle({
+		color:"black",
+			fillOpacity:0.8,
+			weight:1
+		})}
+		//function zoomToFeature(e) {
+    //map.fitBounds(e.target.getBounds());
+		//}
+		
+		var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend'),
+    grades = [0, 25, 50, 75, 100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000 ],
+    labels = [];
+
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML += 
+            '<i style="background:' + getcolor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+}
+
+return div;
+};
+
+legend.addTo(map);
+	</script>
+	</body>
+
+</html>
